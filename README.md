@@ -1,2 +1,2 @@
 ## webserver template.
-- please copy content of `src/configs-examples` into folder name `configs`
+- please move content of `src/configs-examples` into folder `src/configs`
