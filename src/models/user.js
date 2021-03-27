@@ -94,6 +94,11 @@ exports.validateUser = function(user){
 }
 
 const validateProfile = function(profile){
+    const stateName = [ 
+        'Johor', 'Kedah', 'Kelantan','Malacca', 'Negeri Sembilan', 'Pahang',
+        'Penang', 'Perak', 'Perlis', 'Sabah', 'Serawak', 'Selangor','Terengganu',
+        'Kuala Lumpur', 'Labuan', 'Putrajaya'
+    ];
     const phoneRegex = new RegExp(/^\+[0-9]{1,3}[0-9]{4,14}(?:x.+)?$/);
     const sexRegex = new RegExp(/^(male|female|others)/);
     const stateRegex = new RegExp('^('+stateName.join('|')+')$');
