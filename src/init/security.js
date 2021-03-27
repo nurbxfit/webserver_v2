@@ -3,7 +3,7 @@ const helmet = require('helmet');
 const passport 		= require('passport');
 const bodyParser = require('body-parser');
 
-require('../configs/passport')(passport);// we configure passport
+require('../services/passport')(passport);// we configure passport
 
 const corsConf = {
     origin: "*"

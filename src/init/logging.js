@@ -6,7 +6,7 @@ module.exports = function(){
         throw reject; //catch by logger
     })
     //tell winston to handle exceptions
-    winston.handleExceptions(
+    winston.exceptions.handle(
         new winston.transports.File({
             filename: '.logs/commons/uncaughtExceptions.log'
         })

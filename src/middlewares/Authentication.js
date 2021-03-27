@@ -1,5 +1,6 @@
 const passport = require('passport');
 const mongoose = require('mongoose');
+const {UnauthorizedError,ForbiddenError} = require('../helper/customError');
 
 const FindRoleHelper = (layer,req,res,next) =>{
     const Role = mongoose.model('role');
@@ -11,10 +12,11 @@ const FindRoleHelper = (layer,req,res,next) =>{
             return (next(error))
         }
         if(users.length > 0){
+            req.user.accessLayer = layer;
             return next();
         }
         res.status(403);
-        return next(new Error('Forbidden'))
+        return next(new ForbiddenError('you have no rights to access this information'));
     });
 }
 
@@ -26,7 +28,7 @@ exports.RequireLogin = (req,res,next) => {
         }
         if(!user){
             res.status(401)
-            return next(new Error('Unauthorized!'));
+            return next(new UnauthorizedError('Please Login'));
         }
         req.user = user;
         return next()
