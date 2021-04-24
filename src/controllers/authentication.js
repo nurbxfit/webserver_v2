@@ -12,11 +12,13 @@ exports.register = (req,res,next) => {
 
         if(error) return next(error);
         const User = mongoose.model('user');
-        //check if User exist.
+        //check if email  and username already in used
         User.exists({$or:[{email:email},{username:username}]})
         .then(user=>{
+            //check if User exist.
             if(user) return res.status(200).send('username or email already taken');
-            //create new user
+            
+            //else create new user
             const newUser = new User(validUser);
             newUser.unhashpassword = password;
             return newUser.save();
@@ -26,4 +28,23 @@ exports.register = (req,res,next) => {
             next(error);
         })
     }
+}
+
+
+exports.login = (req,res,next) => {
+
+}
+
+
+exports.logout = (req,res,next) => {
+
+}
+
+exports.refreshToken = (req,res,next) =>{
+
+}
+
+
+exports.verifyAccount = (req,res,next) =>{
+    
 }

@@ -16,17 +16,19 @@ const UserSchema = new Schema({
     verified    : {type:Boolean,default:false},
     refreshToken: {type:String},
     verifyHash  : {type:String},
+    unhashpassword: {type:String},
 })
 
 UserSchema.pre('save',async function(){
     // const hash = bcrypt.hashSync(user.password,10);
     const {unhashpassword} = this;
-    if(unhashpassword || typeof unhashpassword === 'string'){
+    if(unhashpassword){
         const saltRounds = 10;
         const salt = await bcrypt.genSalt(saltRounds);
         const hash = await bcrypt.hash(unhashpassword,salt);
         this.unhashpassword = undefined;
         this.password = hash;
+        console.log('hashed:',this.password);
     }
 })
 

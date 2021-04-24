@@ -1,11 +1,12 @@
 
+const Joi = require('joi');
 const mongoose = require('mongoose');
 const { ForbiddenError } = require('../helper/customError');
 const { validateProfile } = require('../models/user');
 
 exports.get = (req,res,next) => {
     const User = mongoose.model('user');
-    User.find().then(user=>{
+    User.find().select('username email').then(user=>{
         if(!user) return res.status(404).send('Nothing to show you');
         return res.status(200).send(user);
     }).catch(error=>{   
@@ -20,7 +21,7 @@ exports.getById = (req,res,next) => {
     const Profile = mongoose.model('profile');
     Profile.findOne({user:userId})
     .select('name age sex phone state -_id') //exclude _id
-    .populate('user','username email -password') //exclude -password
+    .populate('user','username email') //exclude -password
     .then(user=>{
         if(!user) return res.status(404).send('Nothing to show you');
         return res.status(200).send(user);
@@ -30,8 +31,75 @@ exports.getById = (req,res,next) => {
     })
 }
 
-exports.search = (req,res,next) => {
-    console.log('Something');
+
+/*
+POST:SEARCH
+searching will list suggesting user that matches search terms.
+search based on profile, such as their name and region.
+input: {
+    "terms" : {
+        "name": "alibaba"
+    },
+    "orderBy" : "name",
+    "isAscending" : "true",
+    "limit" : 10,
+    "offset" : 0
+}
+output: [
+    {
+        "name": "alibaba",
+        "age" : 21,
+        "sex" : "male"
+        "user":{
+            "_id" : "1231414151515521",
+            "username" : "alfonsoCarrot123",
+            "email" : "alibaba@aliexpress.com"
+        }
+    }
+]
+- frontend will use that info to show simple suggestion card list.
+- frontend will make use of user.id make it hyperlink.
+- when people click, it go to: /user/:id/profile
+*/
+exports.search = async (req,res,next) => {
+    const {error,value} = Joi.validate(req.body.terms,{
+        name: Joi.string().alphanum().min(3).max(50)
+    });
+
+    if(error) return next(error);
+    const {
+        orderBy='name', 
+        isAscending='true', 
+        limit=10, 
+        offset=0
+    } = req.body;
+    let sort = {};
+    sort[orderBy] = (isAscending === 'true') ? 1 : -1 ;
+
+    const {name} = value;
+    const query= {name:name};
+    //find Profile match given name.
+    const Profile = mongoose.model('profile');
+    Profile.find(query)
+    .select('name age sex')
+    .populate('user','username email')
+    .limit(parseInt(limit))
+    .skip(parseInt(offset)*parseInt(limit))
+    .sort(sort)
+    .then(async (user)=>{
+        const total = await Profile.countDocuments(query)
+        if(!user) return res.status(404).send('Nothing to show you');
+        return res.status(200).send({
+            total: total,
+            pages: Math.ceil(total/parseInt(limit)),
+            offset: parseInt(offset),
+            limit: parseInt(limit),
+            user
+        });
+    }).catch(error=>{
+        res.status(500)
+        next(error);
+    })
 }
 
 
@@ -45,10 +113,10 @@ exports.search = (req,res,next) => {
  * when we save it, it will call the mongoose 'save' middleware to hash the password 
  */
 exports.update = (req,res,next) =>{
-    const {error,validUser} = validUser(req.body);
+    const {error,value} = validateUser(req.body);
     if(error) return next(error);
 
-    const {username,email,password} = validUser;
+    const {username,email,password} = value;
     const reqUser = req.user;
 
     const User = mongoose.model('user');
@@ -74,11 +142,11 @@ exports.update = (req,res,next) =>{
 }
 
 exports.updateProfile = (req,res,next) => {
-    const {error,validProfile} = validateProfile(req.body);
+    const {error,value} = validateProfile(req.body);
     
     if(error) return next(error);
 
-    const {name,age,sex,phone,state} = validProfile;
+    const {name,age,sex,phone,state} = value;
     const reqUser = req.user;
     const Profile = mongoose.model('profile');
     Profile.findOne({user:reqUser._id})
