@@ -61,7 +61,7 @@ output: [
 - frontend will make use of user.id make it hyperlink.
 - when people click, it go to: /user/:id/profile
 */
-exports.search = async (req,res,next) => {
+exports.search = (req,res,next) => {
     const {error,value} = Joi.validate(req.body.terms,{
         name: Joi.string().alphanum().min(3).max(50)
     });
