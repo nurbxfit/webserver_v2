@@ -16,6 +16,7 @@ const UserSchema = new Schema({
     verified    : {type:Boolean,default:false},
     refreshToken: {type:String},
     verifyHash  : {type:String},
+    resetToken  : {stype:String},
     unhashpassword: {type:String},
 })
 
@@ -29,6 +30,7 @@ UserSchema.pre('save',async function(){
         this.unhashpassword = undefined;
         this.password = hash;
         console.log('hashed:',this.password);
+        // then it will call next()
     }
 })
 
@@ -57,6 +59,9 @@ UserSchema.methods.createProfile = async function(profile,callback){
 
 }
 
+/**
+ * return true if password correct
+ */
 UserSchema.methods.comparePassword = async function(password){
     const user = this;
     return await bcrypt.compare(password,user.password); 

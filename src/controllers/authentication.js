@@ -48,23 +48,24 @@ exports.register = (req,res,next) => {
 exports.login = (req,res,next) => {
     const loginSchema = Joi.object({
         email: Joi.string().min(5).max(50).required().email(),
-        username: Joi.string().alphanum().min(2).max(50).required(),
+        // username: Joi.string().alphanum().min(2).max(50).required(),
         password: Joi.string().min(5).max(255).required(),
-    }).or('email','password');
+    });
     
     const {error,value} = loginSchema.validate(req.body);
     if(error) return next(error);
     const {email,password} = value;
     const User = mongoose.model('user');
     User.findOne({email:email})
-    .then((user)=>{
+    .then(async (user)=>{
         if(user){
-            let correct = user.comparePassword(password);
+            let correct = await user.comparePassword(password);
             if(correct){
                 const token = user.generateToken(secret['jwtSecret']);
                 user.refreshToken = token.refreshToken;
                 user.save();
-                return res.status(200).send(token);            }
+                return res.status(200).send(token);            
+            }
         }
         res.status(400).send('Invalid Username or Password');
     }).catch(error=>{
@@ -74,15 +75,84 @@ exports.login = (req,res,next) => {
 }
 
 
+/*
+    logout/revokeToken:
+    we remove refreshToken from database. so that refreshToken no longer valid to be use.
+    Only loggedin user can logout??, 
+    so we simply take user from our req object and remove the token.
+*/
 exports.logout = (req,res,next) => {
-
+    const {user} = req;
+    const User = mongoose.model('user');
+    User.findById(user._id)
+    .then(activeUser=>{
+        activeUser.refreshToken = null;
+        return activeUser.save();
+    }).then(revoke=>{
+        res.status(200).send("You're logged out...");
+    }).catch(error=>{
+        res.status(500);
+        return next(error);
+    })
 }
 
-exports.refreshToken = (req,res,next) =>{
 
+/*
+use when access token is expired, and need to quickly get new token without having to relogin.
+INPUT: `just send the expired token`, and backend will verify it.
+OUTPUT: new access token.
+*/
+exports.refreshToken = (req,res,next) =>{
+    const tokenHeader = req.headers["authorization"];
+    
 }
 
 
 exports.verifyAccount = (req,res,next) =>{
     
+}
+
+/*
+    method: POST
+    INPUT: email address,
+    OUTPUT: send email, contain links with token.
+    - get email address, find user check if exist or not.
+    - generate token and add to user.resetToken. (using jwt)
+    - send email with url token.
+    - url is the url of frontend.
+    - frontend will extract the url, and use it in request body to verify the token.
+*/
+exports.getResetToken = (req,res,next) =>{
+
+}
+/*
+    method: POST
+    INPUT: {
+        "resetToken" : "somerandomlongstrings"
+    }   
+    OUTPUT: verified.
+    - get token from request.body send by frontend,
+    - verify the token to be same as in database and not expired.
+    - send comfirmation.
+    - frontend will know that token is valid and redirect user to reset password page.
+    - if token not valid, frontend will do something about it.
+ */
+exports.verifyResetToken = (req,res,next) =>{
+
+}
+
+/*
+    method: POST
+    INPUT: {
+        "newPassword" : "something",
+        "resetToken"  : "comfirmed/valid resetToken",
+    }
+    OUTPUT: password reset successfully.
+    - receive newpassword and verified resetToken from frontend.
+    - verify token again (just to be sure).
+    - if valid, update the password, and set resetToken = null.
+
+*/
+exports.resetPassword = (req,res,next) =>{
+
 }
