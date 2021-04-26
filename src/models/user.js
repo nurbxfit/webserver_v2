@@ -10,8 +10,8 @@ const Profile = require('./profile');
     
 
 const UserSchema = new Schema({
-    username    : {type:String,required:true,minlength:2,maxlength:50},
-    email       : {type:String,required:true,minlength:5,maxlength:255},
+    username    : {type:String,required:true,minlength:2,maxlength:50,trim:true},
+    email       : {type:String,required:true,minlength:5,maxlength:255,trim:true},
     password    : {type:String,required:true,minlength:5,maxlength:1024},
     verified    : {type:Boolean,default:false},
     refreshToken: {type:String},
@@ -84,15 +84,18 @@ UserSchema.methods.compareToken = function(rftoken){
 exports.User = mongoose.model('user',UserSchema);
 
 exports.validateUser = function(user){
-    const Schema = {
+    const Schema = Joi.object({
         username: Joi.string().alphanum().min(2).max(50).required(),
         email: Joi.string().min(5).max(50).required().email(),
         // password: Joi.string().min(5).max(255).required(),
+    })
+    if(!user.password){
+        return Schema.validate(user)
     }
-    if(user.password){
-        Schema.password = Joi.string().min(5).max(255).required();
-    }
-    return Joi.validate(user,Schema);
+    const extendedSchema = Schema.append({
+        password: Joi.string().min(5).max(255).required(),
+    })
+    return extendedSchema.validate(user);
 }
 
 const validateProfile = function(profile){
@@ -106,15 +109,16 @@ const validateProfile = function(profile){
     const stateRegex = new RegExp('^('+stateName.join('|')+')$');
     // const mailRegex = new RegExp(/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/);
 
-    const Schema = {
-        name : Joi.string().alphanum().min(3).max(50).required(),
+    //phone number format: +60123456789
+    const Schema = Joi.object({
+        name : Joi.string().min(3).max(50).required(),
         phone: Joi.string().regex(phoneRegex).required(),
         sex : Joi.string().regex(sexRegex).required(),
         state : Joi.string().regex(stateRegex).required(),
         age : Joi.number().integer().min(12).max(99).required(),
-    }
+    });
 
-    return Joi.validate(profile,Schema);
+    return Schema.validate(profile);
 
 }
 

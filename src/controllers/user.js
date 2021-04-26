@@ -2,7 +2,7 @@
 const Joi = require('joi');
 const mongoose = require('mongoose');
 const { ForbiddenError } = require('../helper/customError');
-const { validateProfile } = require('../models/user');
+const { validateProfile, validateUser } = require('../models/user');
 
 exports.get = (req,res,next) => {
     const User = mongoose.model('user');
@@ -62,9 +62,10 @@ output: [
 - when people click, it go to: /user/:id/profile
 */
 exports.search = (req,res,next) => {
-    const {error,value} = Joi.validate(req.body.terms,{
+    const Schema = Joi.object({
         name: Joi.string().alphanum().min(3).max(50)
-    });
+    })
+    const {error,value} = Schema.validate(req.body.terms);
 
     if(error) return next(error);
     const {
@@ -111,6 +112,11 @@ exports.search = (req,res,next) => {
  * else just update the username and email
  * when we set the password value in user,
  * when we save it, it will call the mongoose 'save' middleware to hash the password 
+ * INPUT: {
+                "username": "admin",
+                "email": "roo@toor.net"
+            }
+    OUTPUT: 200 ok "updated successfully"
  */
 exports.update = (req,res,next) =>{
     const {error,value} = validateUser(req.body);
@@ -120,7 +126,32 @@ exports.update = (req,res,next) =>{
     const reqUser = req.user;
 
     const User = mongoose.model('user');
-    User.findById(reqUser._id).then(user=>{
+    //check if usename or email already taken by other user.
+    User.findOne({$or:[{email:email},{username:username}]})
+    .then( async user=>{
+         /*
+            if thereis a user with that creds and it is not same person as request:
+                - then it means they trying to change creds similar to someone else
+            else (case): 
+                -(1) user==undefined ; means nobody whit that same creds
+                -(2) or user = defined, but id==match, means the same person.
+
+            in else case(1){
+                 undefined user automatic userid comparison also invalid
+                 so need to find user base on reqUser._id, then update.
+            }
+            in else case(2){
+                user defined && id match, so simply use that user and update the value.
+            }
+        */
+        if(user && user._id.toString() !== reqUser._id.toString()){
+            // cannot update creds same as someone else
+            return res.status(200).send('username or email already taken');
+        }
+
+        if(!user){
+            const user = await User.findById(reqUser._id);
+        }
         user.username = username;
         user.email = email;
         /*
@@ -132,15 +163,28 @@ exports.update = (req,res,next) =>{
             user.unhashpassword = password;
         }
         return user.save();
-        //throw new ForbiddenError('Trying to access forbidden information');
+
+       
     }).then(updated=>{
         res.status(200).send('updated successfully');
-    }).catch(error=>{
+    })
+    .catch(error=>{
         res.status(500);
         next(error);
     })
 }
 
+/*
+    update user profile.
+    INPUT:{
+        "name" : "someone",
+        "age"  : 25,
+        "sex"  : "MALE",
+        "phone" : "+60123456789", //refer regex in models/user.js
+        "state" : "Kedah",
+    }
+    OUTPUT: 200 OK "Profile updated!"
+*/
 exports.updateProfile = (req,res,next) => {
     const {error,value} = validateProfile(req.body);
     
@@ -152,7 +196,7 @@ exports.updateProfile = (req,res,next) => {
     Profile.findOne({user:reqUser._id})
     .then(profile=>{
         if(!profile){
-            //create new
+            //create new if we can't find one
             const newProfile = new Profile({
                 name,
                 age,

@@ -21,3 +21,9 @@ exports.ValidationError = class ValidationError extends Error {
     }
 }
 
+exports.ExistedError = class ExistedError extends Error{
+    constructor(message){
+        super(message);
+        this.name= 'ExistedError'
+    }
+}
