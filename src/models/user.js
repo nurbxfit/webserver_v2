@@ -10,6 +10,7 @@ const Profile = require('./profile');
     
 
 const UserSchema = new Schema({
+    googleId    : {type:String,},
     username    : {type:String,required:true,minlength:2,maxlength:50,trim:true},
     email       : {type:String,required:true,minlength:5,maxlength:255,trim:true},
     password    : {type:String,required:true,minlength:5,maxlength:1024},

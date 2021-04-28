@@ -32,6 +32,12 @@ function initDBContent(){
                 layer: 0,
                 role_name: 'admin',
             })
+            const normal = new Role({
+                layer:100,
+                role_name: 'user',
+            })
+
+            normal.save();
 
             return admin.save();
         }

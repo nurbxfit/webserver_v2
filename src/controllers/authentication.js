@@ -25,8 +25,15 @@ exports.register = (req,res,next) => {
             const newUser = new User(value);
             newUser.unhashpassword = password;
             return newUser.save();
-        }).then(newuser=>{
+        }).then(async newuser=>{
+            //add new user to role.
+            const Role = mongoose.model('role');
+            const role = await Role.findOne({layer:100})
+            role.users.push(newuser._id);
+            return role.save();
+        }).then(role=>{
             res.status(200).send('User registered, please confirm your email and update your profile');
+
         }).catch(error=>{
             return next(error);
         })
@@ -92,9 +99,11 @@ exports.logout = (req,res,next) => {
     const User = mongoose.model('user');
     User.findById(user._id)
     .then(activeUser=>{
-        activeUser.refreshToken = null;
+        activeUser.refreshToken = undefined;
         return activeUser.save();
     }).then(revoke=>{
+        req.session = null;
+        req.logout();
         res.status(200).send("You're logged out...");
     }).catch(error=>{
         res.status(500);
@@ -111,7 +120,6 @@ OUTPUT: new access token.
 */
 exports.refreshToken = (req,res,next) =>{
     const token = req.cookies.refreshToken;
-    console.log('secret:',secret['jwtSecret'])
     jwt.verify(token,secret['jwtSecret'], function(error,decoded){
         if(error) throw new Error('Invald refreshToken');
         const User = mongoose.model('user');
@@ -144,6 +152,7 @@ exports.verifyAccount = (req,res,next) =>{
 }
 
 /*
+(for reset password)
     method: POST
     INPUT: email address,
     OUTPUT: send email, contain links with token.
