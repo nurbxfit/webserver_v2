@@ -71,9 +71,9 @@ UserSchema.methods.generateToken = function(secret,duration){
     const expired = duration || '24h';
     const user = this;
     const body = {
-        _id: user._id,
+        _id: user._id.toString(),
         email: user.email,
-        name : user.name,     
+        name : user.username,     
     }
     const accessToken = jwt.sign(body,secret,{expiresIn:expired});
     const refreshToken = jwt.sign(body,secret);
