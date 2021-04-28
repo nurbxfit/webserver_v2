@@ -68,7 +68,7 @@ UserSchema.methods.comparePassword = async function(password){
 }
 
 UserSchema.methods.generateToken = function(secret,duration){
-    const expired = duration || '24h';
+    const expired = duration || '1h';
     const user = this;
     const body = {
         _id: user._id.toString(),
