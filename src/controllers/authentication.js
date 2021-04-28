@@ -2,6 +2,7 @@ const Joi = require('joi');
 const mongoose = require('mongoose');
 const { validateUser } = require('../models/user');
 const secret = require('../configs/secret');
+const jwt = require('jsonwebtoken');
 
 exports.register = (req,res,next) => {
     const {email,username,password,confirmpswd} = req.body;
@@ -64,7 +65,12 @@ exports.login = (req,res,next) => {
                 const token = user.generateToken(secret['jwtSecret']);
                 user.refreshToken = token.refreshToken;
                 user.save();
-                return res.status(200).send(token);            
+                const cookieTokenOptions = {
+                    httpOnly:true,
+                    expires: new Date(Date.now() + 2*24*60*60*1000) // in 2 days
+                }
+                res.cookie('refreshToken',token.refreshToken,cookieTokenOptions);
+                return res.status(200).send({token:token.accessToken});            
             }
         }
         res.status(400).send('Invalid Username or Password');
@@ -98,12 +104,37 @@ exports.logout = (req,res,next) => {
 
 
 /*
+using cookieParser to use req.cookies
 use when access token is expired, and need to quickly get new token without having to relogin.
-INPUT: `just send the expired token`, and backend will verify it.
+INPUT: `just send the refreshtoken as httpOnly cookie`, and backend will verify it.
 OUTPUT: new access token.
 */
 exports.refreshToken = (req,res,next) =>{
-    const tokenHeader = req.headers["authorization"];
+    const token = req.cookies.refreshToken;
+    console.log('secret:',secret['jwtSecret'])
+    jwt.verify(token,secret['jwtSecret'], function(error,decoded){
+        if(error) throw new Error('Invald refreshToken');
+        const User = mongoose.model('user');
+        User.findOne({
+            _id: decoded._id,
+            refreshToken: token,
+        }).then(user=>{
+            if(!user) throw new Error('Invalid Token');
+            const newAccessToken = jwt.sign({
+                _id: user._id.toString(),
+                email: user.email,
+                name: user.username
+            },secret['jwtSecret'],{expiresIn:'1h'});
+            return res.status(200).send({
+                token: newAccessToken,
+            })
+
+        }).catch(error=>{
+            console.error(error);
+            res.status(400).send('Invalid refreshToken issued, please re-login!');
+        })
+    })
+    // return res.send({refreshToken:token});
     
 }
 
