@@ -2,7 +2,7 @@ const mailer  = require('nodemailer');
 const {google} = require('googleapis');
 const {OAuth2} = google.auth;
 
-class GmailerOAuth {
+class GmailerOAuth2 {
     constructor(configs){
         this.CLIENT_ID      = configs.CLIENT_ID;
         this.CLIENT_SECRET  = configs.CLIENT_SECRET;

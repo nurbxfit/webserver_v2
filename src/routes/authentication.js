@@ -8,6 +8,21 @@ router.get('/logout',RequireLogin,AuthController.logout);
 router.post('/register',AuthController.register);
 router.post('/refresh-token',AuthController.refreshToken);
 
+//test sendmail
+router.get('/testmail',(req,res,next)=>{
+    const Mailer = require('../services/mailer');
+    const mail = new Mailer('gmail');
+    mail.sendMail({
+        from:'sender@gmail.com',
+        to:'nurfitri.abdrahman@gmail.com', //receiver email
+        subject:'test gmail',
+        html: "<h1>Hello World</h1>"
+    },function(error,info){
+        if(error) return next(error);
+        res.send('Email sent to your email');
+    });
+})
+
 //Google Oauth
 // router.get('/failed',(req,res,next)=>{
 //     res.send('Failed to login')
