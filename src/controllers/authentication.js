@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const { validateUser } = require('../models/user');
 const secret = require('../configs/secret');
 const jwt = require('jsonwebtoken');
+const Mailer = require('../services/mailer');
 
 exports.register = (req,res,next) => {
     const {email,username,password,confirmpswd} = req.body;
@@ -30,9 +31,31 @@ exports.register = (req,res,next) => {
             const Role = mongoose.model('role');
             const role = await Role.findOne({layer:100})
             role.users.push(newuser._id);
-            return role.save();
-        }).then(role=>{
-            res.status(200).send('User registered, please confirm your email and update your profile');
+            await role.save();
+            return newuser;
+        }).then(user=>{
+            // user added/ then we send email to comfirm their account
+            // generate token
+            const mail = new Mailer('gmail');
+            const token = user.generateToken(secret['verifyToken'],'2d');
+            mail.sendMail({
+                from:'server',
+                to: user.email,
+                subject: 'email comfirmation',
+                html: `
+                <div>
+                    <h3> Account registered </h3>
+                    <p> use this link to verify your email </p>
+                    <p>token: http://localhost:5000/verify/emailToken=${token} </p>
+                    or click button below.
+                    <button onclick="window.location.href='http://localhost:500/verify/email?token=${token}';">verify</button>
+                </div>
+                `
+            },function(error,info){
+                if(error) return res.send('There is problem, sending verification link to your email, please re-verify again');
+                res.status(200).send('User registered, please confirm your email and update your profile');
+
+            });
 
         }).catch(error=>{
             return next(error);
@@ -69,15 +92,16 @@ exports.login = (req,res,next) => {
         if(user){
             let correct = await user.comparePassword(password);
             if(correct){
-                const token = user.generateToken(secret['jwtSecret']);
-                user.refreshToken = token.refreshToken;
+                const refreshToken = user.generateToken(secret['jwtSecret'],'2d');
+                const accessToken = user.generateToken(secret['jwtSecret'],'1h');
+                user.refreshToken = refreshToken;
                 user.save();
                 const cookieTokenOptions = {
                     httpOnly:true,
                     expires: new Date(Date.now() + 2*24*60*60*1000) // in 2 days
                 }
                 res.cookie('refreshToken',token.refreshToken,cookieTokenOptions);
-                return res.status(200).send({token:token.accessToken});            
+                return res.status(200).send({token:accessToken});            
             }
         }
         res.status(400).send('Invalid Username or Password');
@@ -147,11 +171,36 @@ exports.refreshToken = (req,res,next) =>{
 }
 
 
+/*
+# verifyAccount
+- after user register, a link contain token will be sent to their email to verify their emaill address, 
+- the link will go to frontend, and frontend should extract the token in that link and sent it back here to get verify..
+- this controller get that token, verify it, 
+- find the user and then update user.verified = true;
+*/
 exports.verifyAccount = (req,res,next) =>{
-    
+    const {token} = req.query;
+    const User = mongoose.model('user');
+    console.log('Token:',token);
+    if(token){
+        jwt.verify(token,secret['verifyToken'],function(error,decoded){
+            if(error) return next(error);
+            User.findOneAndUpdate({
+                email:decoded.email, 
+                username: decoded.name
+            },{verified:true})
+            .then((user)=>{
+                res.status(201).send('email verified');
+            }).catch(error=>{
+                return next(error);
+            })
+            
+        })
+    }
 }
 
 /*
+# get ResetToken
 (for reset password)
     method: POST
     INPUT: email address,
@@ -166,6 +215,7 @@ exports.getResetToken = (req,res,next) =>{
 
 }
 /*
+#verifyResetToken
     method: POST
     INPUT: {
         "resetToken" : "somerandomlongstrings"
@@ -182,6 +232,7 @@ exports.verifyResetToken = (req,res,next) =>{
 }
 
 /*
+#resetPassword
     method: POST
     INPUT: {
         "newPassword" : "something",

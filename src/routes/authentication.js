@@ -8,6 +8,8 @@ router.get('/logout',RequireLogin,AuthController.logout);
 router.post('/register',AuthController.register);
 router.post('/refresh-token',AuthController.refreshToken);
 
+//email verification
+router.get('/verify',AuthController.verifyAccount);
 //test sendmail
 router.get('/testmail',(req,res,next)=>{
     const Mailer = require('../services/mailer');

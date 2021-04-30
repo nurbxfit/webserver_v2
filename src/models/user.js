@@ -30,7 +30,7 @@ UserSchema.pre('save',async function(){
         const hash = await bcrypt.hash(unhashpassword,salt);
         this.unhashpassword = undefined;
         this.password = hash;
-        console.log('hashed:',this.password);
+        // console.log('hashed:',this.password);
         // then it will call next()
     }
 })
@@ -68,17 +68,18 @@ UserSchema.methods.comparePassword = async function(password){
     return await bcrypt.compare(password,user.password); 
 }
 
-UserSchema.methods.generateToken = function(secret,duration){
-    const expired = duration || '1h';
+UserSchema.methods.generateToken = function(secret,duration='1h'){
+    // const expired = duration || '1h';
     const user = this;
     const body = {
         _id: user._id.toString(),
         email: user.email,
         name : user.username,     
     }
-    const accessToken = jwt.sign(body,secret,{expiresIn:expired});
-    const refreshToken = jwt.sign(body,secret);
-    return {accessToken,refreshToken};
+    const token = jwt.sign(body,secret,{expiresIn:duration});
+    return token;
+    // const refreshToken = jwt.sign(body,secret);
+    // return {accessToken,refreshToken};
 }
 
 UserSchema.methods.compareToken = function(rftoken){
