@@ -2,6 +2,7 @@ module.exports = {
     jwtSecret : 'somerandomshitkeyuseforjwt',
     googleClientID: 'randomnumber-something.apps.googleusercontent.com',
     googleClientSecret: 'somerandomstringbygoogle',
-    cookieSecret :'some random shit use by cookies secret'
+    cookieSecret :'some random shit use by cookies secret',
+    verifyToken : 'some other random shit use for generate verify token'
 
 }
