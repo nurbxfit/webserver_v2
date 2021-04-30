@@ -1,7 +1,7 @@
 {
   "name": "webserver_v2",
   "version": "1.0.0",
-  "description": "Drug Herb Interaction Backend Server",
+  "description": "Backend Server",
   "main": "index.js",
   "scripts": {
     "start": "node src/index.js",
