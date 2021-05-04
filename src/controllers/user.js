@@ -1,36 +1,37 @@
+const Joi = require("joi");
+const mongoose = require("mongoose");
+const { ForbiddenError } = require("../helper/customError");
+const { validateProfile, validateUser } = require("../models/user");
 
-const Joi = require('joi');
-const mongoose = require('mongoose');
-const { ForbiddenError } = require('../helper/customError');
-const { validateProfile, validateUser } = require('../models/user');
-
-exports.get = (req,res,next) => {
-    const User = mongoose.model('user');
-    User.find().select('username email').then(user=>{
-        if(!user) return res.status(404).send('Nothing to show you');
-        return res.status(200).send(user);
-    }).catch(error=>{   
-        res.status(500)
-        next(error);
+exports.get = (req, res, next) => {
+  const User = mongoose.model("user");
+  User.find()
+    .select("username email")
+    .then((user) => {
+      if (!user) return res.status(404).send("Nothing to show you");
+      return res.status(200).send(user);
     })
-}
+    .catch((error) => {
+      res.status(500);
+      next(error);
+    });
+};
 
-
-exports.getById = (req,res,next) => {
-    const {userId} = req.params;
-    const Profile = mongoose.model('profile');
-    Profile.findOne({user:userId})
-    .select('name age sex phone state -_id') //exclude _id
-    .populate('user','username email') //exclude -password
-    .then(user=>{
-        if(!user) return res.status(404).send('Nothing to show you');
-        return res.status(200).send(user);
-    }).catch(error=>{
-        res.status(500)
-        next(error);
+exports.getById = (req, res, next) => {
+  const { userId } = req.params;
+  const Profile = mongoose.model("profile");
+  Profile.findOne({ user: userId })
+    .select("name age sex phone state -_id") //exclude _id
+    .populate("user", "username email") //exclude -password
+    .then((user) => {
+      if (!user) return res.status(404).send("Nothing to show you");
+      return res.status(200).send(user);
     })
-}
-
+    .catch((error) => {
+      res.status(500);
+      next(error);
+    });
+};
 
 /*
 POST:SEARCH
@@ -61,48 +62,48 @@ output: [
 - frontend will make use of user.id make it hyperlink.
 - when people click, it go to: /user/:id/profile
 */
-exports.search = (req,res,next) => {
-    const Schema = Joi.object({
-        name: Joi.string().alphanum().min(3).max(50)
-    })
-    const {error,value} = Schema.validate(req.body.terms);
+exports.search = (req, res, next) => {
+  const Schema = Joi.object({
+    name: Joi.string().alphanum().min(3).max(50),
+  });
+  const { error, value } = Schema.validate(req.body.terms);
 
-    if(error) return next(error);
-    const {
-        orderBy='name', 
-        isAscending='true', 
-        limit=10, 
-        offset=0
-    } = req.body;
-    let sort = {};
-    sort[orderBy] = (isAscending === 'true') ? 1 : -1 ;
+  if (error) return next(error);
+  const {
+    orderBy = "name",
+    isAscending = "true",
+    limit = 10,
+    offset = 0,
+  } = req.body;
+  let sort = {};
+  sort[orderBy] = isAscending === "true" ? 1 : -1;
 
-    const {name} = value;
-    const query= {name:name};
-    //find Profile match given name.
-    const Profile = mongoose.model('profile');
-    Profile.find(query)
-    .select('name age sex')
-    .populate('user','username email')
+  const { name } = value;
+  const query = { name: name };
+  //find Profile match given name.
+  const Profile = mongoose.model("profile");
+  Profile.find(query)
+    .select("name age sex")
+    .populate("user", "username email")
     .limit(parseInt(limit))
-    .skip(parseInt(offset)*parseInt(limit))
+    .skip(parseInt(offset) * parseInt(limit))
     .sort(sort)
-    .then(async (user)=>{
-        const total = await Profile.countDocuments(query)
-        if(!user) return res.status(404).send('Nothing to show you');
-        return res.status(200).send({
-            total: total,
-            pages: Math.ceil(total/parseInt(limit)),
-            offset: parseInt(offset),
-            limit: parseInt(limit),
-            user
-        });
-    }).catch(error=>{
-        res.status(500)
-        next(error);
+    .then(async (user) => {
+      const total = await Profile.countDocuments(query);
+      if (!user) return res.status(404);
+      return res.status(200).send({
+        total: total,
+        pages: Math.ceil(total / parseInt(limit)),
+        offset: parseInt(offset),
+        limit: parseInt(limit),
+        user,
+      });
     })
-}
-
+    .catch((error) => {
+      res.status(500);
+      next(error);
+    });
+};
 
 /**
  * update user account
@@ -118,18 +119,18 @@ exports.search = (req,res,next) => {
             }
     OUTPUT: 200 ok "updated successfully"
  */
-exports.update = (req,res,next) =>{
-    const {error,value} = validateUser(req.body);
-    if(error) return next(error);
+exports.update = (req, res, next) => {
+  const { error, value } = validateUser(req.body);
+  if (error) return next(error);
 
-    const {username,email,password} = value;
-    const reqUser = req.user;
+  const { username, email, password } = value;
+  const reqUser = req.user;
 
-    const User = mongoose.model('user');
-    //check if usename or email already taken by other user.
-    User.findOne({$or:[{email:email},{username:username}]})
-    .then( async user=>{
-         /*
+  const User = mongoose.model("user");
+  //check if usename or email already taken by other user.
+  User.findOne({ $or: [{ email: email }, { username: username }] })
+    .then(async (user) => {
+      /*
             if thereis a user with that creds and it is not same person as request:
                 - then it means they trying to change creds similar to someone else
             else (case): 
@@ -144,35 +145,34 @@ exports.update = (req,res,next) =>{
                 user defined && id match, so simply use that user and update the value.
             }
         */
-        if(user && user._id.toString() !== reqUser._id.toString()){
-            // cannot update creds same as someone else
-            return res.status(200).send('username or email already taken');
-        }
+      if (user && user._id.toString() !== reqUser._id.toString()) {
+        // cannot update creds same as someone else
+        return res.status(200).send("username or email already taken");
+      }
 
-        if(!user){
-            const user = await User.findById(reqUser._id);
-        }
-        user.username = username;
-        user.email = email;
-        /*
+      if (!user) {
+        const user = await User.findById(reqUser._id);
+      }
+      user.username = username;
+      user.email = email;
+      /*
         if we dont receive password back from validation, 
         means req.body don't have password.
         so we simply just update the username and email;
         */
-        if(password){
-            user.unhashpassword = password;
-        }
-        return user.save();
-
-       
-    }).then(updated=>{
-        res.status(200).send('updated successfully');
+      if (password) {
+        user.unhashpassword = password;
+      }
+      return user.save();
     })
-    .catch(error=>{
-        res.status(500);
-        next(error);
+    .then((updated) => {
+      return res.status(200);
     })
-}
+    .catch((error) => {
+      res.status(500);
+      next(error);
+    });
+};
 
 /*
     update user profile.
@@ -185,38 +185,39 @@ exports.update = (req,res,next) =>{
     }
     OUTPUT: 200 OK "Profile updated!"
 */
-exports.updateProfile = (req,res,next) => {
-    const {error,value} = validateProfile(req.body);
-    
-    if(error) return next(error);
+exports.updateProfile = (req, res, next) => {
+  const { error, value } = validateProfile(req.body);
 
-    const {name,age,sex,phone,state} = value;
-    const reqUser = req.user;
-    const Profile = mongoose.model('profile');
-    Profile.findOne({user:reqUser._id})
-    .then(profile=>{
-        if(!profile){
-            //create new if we can't find one
-            const newProfile = new Profile({
-                name,
-                age,
-                sex,
-                phone,
-                state
-            });
-            return newProfile.save();
-        }
-        profile.name = name;
-        profile.age = age;
-        profile.sex = sex;
-        profile.state = state;
-        profile.phone = phone;
-        return profile.save();
-    }).then(saved=>{
-        res.status(200).send('Profile updated!');
-    }).catch(error=>{
-        res.status(500);
-        next(error);
+  if (error) return next(error);
+
+  const { name, age, sex, phone, state } = value;
+  const reqUser = req.user;
+  const Profile = mongoose.model("profile");
+  Profile.findOne({ user: reqUser._id })
+    .then((profile) => {
+      if (!profile) {
+        //create new if we can't find one
+        const newProfile = new Profile({
+          name,
+          age,
+          sex,
+          phone,
+          state,
+        });
+        return newProfile.save();
+      }
+      profile.name = name;
+      profile.age = age;
+      profile.sex = sex;
+      profile.state = state;
+      profile.phone = phone;
+      return profile.save();
     })
-
-}
+    .then((saved) => {
+      return res.status(200);
+    })
+    .catch((error) => {
+      res.status(500);
+      next(error);
+    });
+};
