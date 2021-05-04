@@ -41,6 +41,12 @@ exports.register = (req, res, next) => {
         // generate token
         const mail = new Mailer("gmail");
         const token = user.generateToken(secret["verifyToken"], "2d");
+        const url =
+          req.protocol +
+          "://" +
+          req.get("host") +
+          "/auth/verify/email?token=" +
+          token;
         mail.sendMail(
           {
             from: "server",
@@ -50,9 +56,9 @@ exports.register = (req, res, next) => {
                 <div>
                     <h3> Account registered </h3>
                     <p> use this link to verify your email </p>
-                    <p>token: http://localhost:5000/verify/emailToken=${token} </p>
+                    <p>link: ${url} </p>
                     or click button below.
-                    <button onclick="window.location.href='http://localhost:500/verify/email?token=${token}';">verify</button>
+                    <button onclick="window.location.href='${url}';">verify</button>
                 </div>
                 `,
           },
@@ -243,6 +249,12 @@ exports.getResetToken = (req, res, next) => {
       user.resetToken = token;
       user.save();
       const mail = new Mailer("gmail");
+      const url =
+        req.protocol +
+        "://" +
+        req.get("host") +
+        "/auth/reset/verify?token=" +
+        token;
       mail.sendMail(
         {
           from: "server",
@@ -252,9 +264,9 @@ exports.getResetToken = (req, res, next) => {
             <div>
                 <h3> Account registered </h3>
                 <p> use this link to verify your email </p>
-                <p>token: http://localhost:5000/auth/reset/verify?token=${token} </p>
+                <p>link: ${url} </p>
                 or click button below.
-                <button onclick="window.location.href='http://localhost:5000/auth/reset/verify?token=${token}';">verify</button>
+                <button onclick="window.location.href='${url}';">verify</button>
             </div>
             `,
         },
