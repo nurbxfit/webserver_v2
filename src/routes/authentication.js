@@ -13,7 +13,7 @@ router.get("/verify/email", AuthController.verifyAccount);
 
 //reset password
 router.post("/reset/token", AuthController.getResetToken);
-router.post("/reset/verify", AuthController.verifyResetToken);
+router.get("/reset/verify", AuthController.verifyResetToken);
 router.put("/reset/:user_id/password", AuthController.resetPassword);
 // //test sendmail
 // router.get('/testmail',(req,res,next)=>{

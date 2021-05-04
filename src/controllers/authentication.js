@@ -262,8 +262,9 @@ exports.getResetToken = (req, res, next) => {
           subject: "reset password token",
           html: `
             <div>
-                <h3> Account registered </h3>
-                <p> use this link to verify your email </p>
+                <h3> Reset Password request</h3>
+                <p> use this link to reset your password </p>
+                <p> Please Ignore this message if you did not request this reset </p>
                 <p>link: ${url} </p>
                 or click button below.
                 <button onclick="window.location.href='${url}';">verify</button>
@@ -313,17 +314,19 @@ exports.verifyResetToken = (req, res, next) => {
     User.findById(decoded._id)
       .then((user) => {
         if (user && token === user.resetToken) {
-          res.send(200).send({
+          return res.status(200).json({
             message: "Valid Token",
             user_id: decoded._id,
             resetToken: token,
           });
         }
-        res.status(400).send({
-          message: "Invalid Token",
-        });
+        res.status(400);
+        throw new Error("Invalid token");
       })
       .catch((error) => {
+        if (res.statusCode) {
+          return res.send(error.message);
+        }
         next(error);
       });
   });
@@ -354,23 +357,26 @@ exports.resetPassword = (req, res, next) => {
   const { error, value } = Schema.validate(req.body);
   if (error) return next(error);
 
-  console.log("user_id:", user_id);
+  // console.log("user_id:", user_id);
   const User = mongoose.model("user");
   User.findById(user_id)
     .then((user) => {
-      if (user.resetToken === value.resetToken) {
-        user.unhashpassword = value.newPassword;
-        user.password = value.newPassword;
-        return user.save();
+      if (user.resetToken !== value.resetToken) {
+        res.status(400);
+        throw new Error("Invalid token or expired");
       }
-      res.status(400).send({
-        messsage: "Invalid token",
-      });
+      user.unhashpassword = value.newPassword;
+      user.password = value.newPassword;
+      user.resetToken = undefined;
+      return user.save();
     })
     .then((updated) => {
-      return res.status(204);
+      return res.status(204).send();
     })
     .catch((error) => {
+      if (res.statusCode) {
+        return res.send(error.message);
+      }
       return next(error);
     });
 };
